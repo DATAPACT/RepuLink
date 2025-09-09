@@ -1,0 +1,8 @@
+Method,Gini,Entropy,Top-K Stability
+PageRank,0.6354,-inf,0.99
+EigenTrust,0.9971,0.3139,0.17
+PeerTrust,0.0658,0.9977,0.92
+PowerTrust,0.1057,0.996,0.82
+AbsoluteTrust,0.9962,0.3115,0.19
+ShapleyTrust,0.7055,0.8617,0.99
+RepuLink,0.9968,0.3225,0.19
