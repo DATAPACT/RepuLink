@@ -10,8 +10,7 @@ Powered by
 
 **RepuLink** is a network-based reputation system that combines traditional forward propagation with a novel backward propagation mechanism to adjust reputations based on both interactions and endorsements. The algorithm leverages endorsement penalty and reward signals to provide a more robust, calibrated, and explainable reputation evaluation in decentralized networks.
 
-![Repulink](../figure/Repulink.png)
-
+![Repulink](./images/Repulink.png)
 
 ## **Commercial Information**
 
