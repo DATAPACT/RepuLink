@@ -66,9 +66,9 @@ Check the results saved under the folder `repulink_multislot_core_modules`.
 
 ## Expected KPIs
 
-These KPI relate to the Policy Service suite of tools, which include the Policy Editor, the Policy Enginge and the Ontology Service.
-
 | What | How | Values |
 | --- | --- | --- |
-| 1) Enforcing trust accountability through endorsement chain 2) Efficient reputation updating with incentive and accountability mechanisms	| 1) Testing with synthetic data (user profiles with different behaviours) to check if the endorsers of bad-performed users will be penalised 2) Efficiency of the RepuLink algorithm (comparison of reputation updating time with/without incentive/accountability mechanisms)	| 1) Set a threshold for penalty, only the penalty lower than the threshold, the backward propagation will stop. 2) Achieve similar efficiency with other similar algorithms for trust and reputation calculation. |
+| 1) Enforcing trust accountability through endorsement chain; 2) Efficient reputation updating with incentive and accountability mechanisms	| 1) Testing with synthetic data (user profiles with different behaviours) to check if the endorsers of bad-performed users will be penalised; 2) Efficiency of the RepuLink algorithm (comparison of reputation updating time with/without incentive/accountability mechanisms)	| 1) threshold for penalty, only the penalty lower than the threshold, the backward propagation will stop; 2) Achieve similar efficiency with other similar algorithms for trust and reputation calculation. |
 
+Progress towards KPIs:
+* 04/03/2026: 1) and 2) designed architecture, see deliverable 3.1
