@@ -1,3 +1,4 @@
+import { useEffect } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 
@@ -19,6 +20,18 @@ const useAuth = () => {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { showErrorToast } = useCustomToast()
+
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (!event.origin.endsWith(".dp.assistcloud.net")) return
+      if (event.data?.type !== "SSO_TOKEN") return
+      if (isLoggedIn()) return
+      localStorage.setItem("access_token", event.data.token)
+      navigate({ to: "/" })
+    }
+    window.addEventListener("message", handler)
+    return () => window.removeEventListener("message", handler)
+  }, [navigate])
 
   const { data: user } = useQuery<UserPublic | null, Error>({
     queryKey: ["currentUser"],

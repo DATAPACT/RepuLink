@@ -1,9 +1,12 @@
+import { useEffect, useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import {
   createFileRoute,
   Link as RouterLink,
   redirect,
+  useNavigate,
 } from "@tanstack/react-router"
+import { Loader2 } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
@@ -52,6 +55,8 @@ export const Route = createFileRoute("/login")({
 
 function Login() {
   const { loginMutation } = useAuth()
+  const navigate = useNavigate()
+  const [awaitingSso, setAwaitingSso] = useState(true)
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     mode: "onBlur",
@@ -61,6 +66,32 @@ function Login() {
       password: "",
     },
   })
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setAwaitingSso(false), 500)
+
+    const handler = (event: MessageEvent) => {
+      if (!event.origin.endsWith(".dp.assistcloud.net")) return
+      if (event.data?.type !== "SSO_TOKEN") return
+      clearTimeout(timeout)
+      localStorage.setItem("access_token", event.data.token)
+      navigate({ to: "/" })
+    }
+
+    window.addEventListener("message", handler)
+    return () => {
+      clearTimeout(timeout)
+      window.removeEventListener("message", handler)
+    }
+  }, [navigate])
+
+  if (awaitingSso) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
 
   const onSubmit = (data: FormData) => {
     if (loginMutation.isPending) return
