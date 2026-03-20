@@ -68,10 +68,11 @@ function Login() {
   })
 
   useEffect(() => {
-    const timeout = setTimeout(() => setAwaitingSso(false), 500)
+    const timeout = setTimeout(() => setAwaitingSso(false), 3000)
 
     const handler = (event: MessageEvent) => {
-      if (!event.origin.endsWith(".dp.assistcloud.net")) return
+      const allowedOrigins = [".dp.assistcloud.net", "http://localhost:3000"]
+      if (!allowedOrigins.some(o => event.origin === o || event.origin.endsWith(o))) return
       if (event.data?.type !== "SSO_TOKEN") return
       clearTimeout(timeout)
       localStorage.setItem("access_token", event.data.token)
@@ -79,6 +80,12 @@ function Login() {
     }
 
     window.addEventListener("message", handler)
+
+    // Signal to parent that RepuLink is ready to receive the SSO token
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: "IFRAME_READY" }, "*")
+    }
+
     return () => {
       clearTimeout(timeout)
       window.removeEventListener("message", handler)

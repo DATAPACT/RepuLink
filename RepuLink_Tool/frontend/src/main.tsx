@@ -13,17 +13,64 @@ import { Toaster } from "./components/ui/sonner"
 import "./index.css"
 import { routeTree } from "./routeTree.gen"
 
+const ALLOWED_ORIGINS = [".dp.assistcloud.net", "http://localhost:3000"]
+const isAllowedOrigin = (origin: string) =>
+  ALLOWED_ORIGINS.some((o) => origin === o || origin.endsWith(o))
+
+let pendingTokenRefresh: Promise<string> | null = null
+
+const requestFreshToken = (): Promise<string> => {
+  if (pendingTokenRefresh) return pendingTokenRefresh
+
+  pendingTokenRefresh = new Promise<string>((resolve) => {
+    const handler = (event: Event) => {
+      pendingTokenRefresh = null
+      resolve((event as CustomEvent<{ token: string }>).detail.token)
+    }
+    window.addEventListener("sso-token-refreshed", handler, { once: true })
+    window.parent.postMessage({ type: "IFRAME_REQUEST_TOKEN" }, "*")
+    setTimeout(() => {
+      window.removeEventListener("sso-token-refreshed", handler)
+      pendingTokenRefresh = null
+      resolve(localStorage.getItem("access_token") || "")
+    }, 5000)
+  })
+
+  return pendingTokenRefresh
+}
+
 OpenAPI.BASE = import.meta.env.VITE_API_URL
 OpenAPI.TOKEN = async () => {
-  return localStorage.getItem("access_token") || ""
+  const token = localStorage.getItem("access_token")
+  if (!token) return ""
+
+  if (window.parent !== window) {
+    try {
+      const base64url = token.split(".")[1]
+      const base64 = base64url.replace(/-/g, "+").replace(/_/g, "/")
+      const padded = base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, "=")
+      const payload = JSON.parse(atob(padded))
+      const expiresIn = payload.exp - Math.floor(Date.now() / 1000)
+      if (expiresIn < 30) return requestFreshToken()
+    } catch {
+      // not a JWT, use as-is
+    }
+  }
+
+  return token
 }
 
 const handleApiError = (error: Error) => {
   if (error instanceof ApiError && [401, 403].includes(error.status)) {
-    localStorage.removeItem("access_token")
-    window.location.href = "/login"
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: "IFRAME_REQUEST_TOKEN" }, "*")
+    } else {
+      localStorage.removeItem("access_token")
+      window.location.href = "/login"
+    }
   }
 }
+
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
     onError: handleApiError,
@@ -31,6 +78,16 @@ const queryClient = new QueryClient({
   mutationCache: new MutationCache({
     onError: handleApiError,
   }),
+})
+
+window.addEventListener("message", (event) => {
+  if (!isAllowedOrigin(event.origin)) return
+  if (event.data?.type !== "SSO_TOKEN") return
+  localStorage.setItem("access_token", event.data.token)
+  window.dispatchEvent(
+    new CustomEvent("sso-token-refreshed", { detail: { token: event.data.token } }),
+  )
+  queryClient.invalidateQueries()
 })
 
 const router = createRouter({ routeTree })

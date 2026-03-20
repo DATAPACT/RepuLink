@@ -16,6 +16,27 @@ const isLoggedIn = () => {
   return localStorage.getItem("access_token") !== null
 }
 
+const getUserFromKeycloakToken = (): UserPublic | null => {
+  const token = localStorage.getItem("access_token")
+  if (!token) return null
+  try {
+    const base64url = token.split(".")[1]
+    const base64 = base64url.replace(/-/g, "+").replace(/_/g, "/")
+    const padded = base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, "=")
+    const payload = JSON.parse(atob(padded))
+    if (!payload.iss) return null  // internal JWT has no iss
+    return {
+      id: payload.sub,
+      email: payload.email,
+      full_name: payload.name ?? null,
+      is_active: true,
+      is_superuser: false,
+    }
+  } catch {
+    return null
+  }
+}
+
 const useAuth = () => {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -23,7 +44,8 @@ const useAuth = () => {
 
   useEffect(() => {
     const handler = (event: MessageEvent) => {
-      if (!event.origin.endsWith(".dp.assistcloud.net")) return
+      const allowedOrigins = [".dp.assistcloud.net", "http://localhost:3000"]
+      if (!allowedOrigins.some(o => event.origin === o || event.origin.endsWith(o))) return
       if (event.data?.type !== "SSO_TOKEN") return
       if (isLoggedIn()) return
       localStorage.setItem("access_token", event.data.token)
@@ -33,11 +55,15 @@ const useAuth = () => {
     return () => window.removeEventListener("message", handler)
   }, [navigate])
 
-  const { data: user } = useQuery<UserPublic | null, Error>({
+  const ssoUser = getUserFromKeycloakToken()
+
+  const { data: fetchedUser } = useQuery<UserPublic | null, Error>({
     queryKey: ["currentUser"],
     queryFn: UsersService.readUserMe,
-    enabled: isLoggedIn(),
+    enabled: isLoggedIn() && !ssoUser,
   })
+
+  const user = ssoUser ?? fetchedUser
 
   const signUpMutation = useMutation({
     mutationFn: (data: UserRegister) =>
