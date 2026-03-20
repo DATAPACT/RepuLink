@@ -1,3 +1,4 @@
+import secrets
 from collections.abc import Generator
 from typing import Annotated
 
@@ -13,7 +14,7 @@ from app import crud
 from app.core import security
 from app.core.config import settings
 from app.core.db import engine
-from app.models import TokenPayload, User
+from app.models import TokenPayload, User, UserCreate
 
 reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_STR}/login/access-token"
@@ -40,21 +41,38 @@ def _get_user_from_keycloak_token(session: Session, token: str) -> User:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Could not validate credentials",
         )
-    email = response.json().get("email")
+    userinfo = response.json()
+    email = userinfo.get("email")
     if not email:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Could not validate credentials",
         )
+
     user = crud.get_user_by_email(session=session, email=email)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        user = crud.create_user(
+            session=session,
+            user_create=UserCreate(
+                email=email,
+                full_name=userinfo.get("name"),
+                password=secrets.token_urlsafe(32),
+            ),
+        )
+
     if not user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return user
 
 
 def get_current_user(session: SessionDep, token: TokenDep) -> User:
+    try:
+        header = jwt.get_unverified_header(token)
+        if header.get("alg") != security.ALGORITHM:
+            return _get_user_from_keycloak_token(session, token)
+    except Exception:
+        return _get_user_from_keycloak_token(session, token)
+
     try:
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[security.ALGORITHM]
