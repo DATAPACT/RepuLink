@@ -85,7 +85,6 @@ services:
       SMTP_PORT: "1025"
       SMTP_TLS: "false"
       EMAILS_FROM_EMAIL: "noreply@example.com"
-      KEYCLOAK_ISSUER: "https://auth.dp.assistcloud.net/realms/master"
 
   mailcatcher:
     image: schickling/mailcatcher
