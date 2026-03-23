@@ -56,7 +56,8 @@ export const Route = createFileRoute("/login")({
 function Login() {
   const { loginMutation } = useAuth()
   const navigate = useNavigate()
-  const [awaitingSso, setAwaitingSso] = useState(true)
+  const isInIframe = window.parent !== window
+  const [awaitingSso, setAwaitingSso] = useState(isInIframe)
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     mode: "onBlur",
@@ -68,6 +69,8 @@ function Login() {
   })
 
   useEffect(() => {
+    if (!isInIframe) return
+
     const timeout = setTimeout(() => setAwaitingSso(false), 3000)
 
     const handler = (event: MessageEvent) => {
@@ -82,15 +85,13 @@ function Login() {
     window.addEventListener("message", handler)
 
     // Signal to parent that RepuLink is ready to receive the SSO token
-    if (window.parent !== window) {
-      window.parent.postMessage({ type: "IFRAME_READY" }, "*")
-    }
+    window.parent.postMessage({ type: "IFRAME_READY" }, "*")
 
     return () => {
       clearTimeout(timeout)
       window.removeEventListener("message", handler)
     }
-  }, [navigate])
+  }, [navigate, isInIframe])
 
   if (awaitingSso) {
     return (

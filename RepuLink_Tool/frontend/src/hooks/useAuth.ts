@@ -43,16 +43,9 @@ const useAuth = () => {
   const { showErrorToast } = useCustomToast()
 
   useEffect(() => {
-    const handler = (event: MessageEvent) => {
-      const allowedOrigins = [".dp.assistcloud.net", "http://localhost:3000"]
-      if (!allowedOrigins.some(o => event.origin === o || event.origin.endsWith(o))) return
-      if (event.data?.type !== "SSO_TOKEN") return
-      if (isLoggedIn()) return
-      localStorage.setItem("access_token", event.data.token)
-      navigate({ to: "/" })
-    }
-    window.addEventListener("message", handler)
-    return () => window.removeEventListener("message", handler)
+    const handler = () => navigate({ to: "/" })
+    window.addEventListener("sso-token-refreshed", handler)
+    return () => window.removeEventListener("sso-token-refreshed", handler)
   }, [navigate])
 
   const ssoUser = getUserFromKeycloakToken()
@@ -60,10 +53,11 @@ const useAuth = () => {
   const { data: fetchedUser } = useQuery<UserPublic | null, Error>({
     queryKey: ["currentUser"],
     queryFn: UsersService.readUserMe,
-    enabled: isLoggedIn() && !ssoUser,
+    enabled: isLoggedIn(),
+    placeholderData: ssoUser ?? undefined,
   })
 
-  const user = ssoUser ?? fetchedUser
+  const user = fetchedUser ?? ssoUser
 
   const signUpMutation = useMutation({
     mutationFn: (data: UserRegister) =>
@@ -102,6 +96,7 @@ const useAuth = () => {
     loginMutation,
     logout,
     user,
+    isSsoUser: ssoUser !== null,
   }
 }
 
