@@ -11,6 +11,7 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 
 import type { Body_login_login_access_token as AccessToken } from "@/client"
+import { TOOLBOX_ORIGIN } from "@/constants"
 import { AuthLayout } from "@/components/Common/AuthLayout"
 import {
   Form,
@@ -74,8 +75,7 @@ function Login() {
     const timeout = setTimeout(() => setAwaitingSso(false), 3000)
 
     const handler = (event: MessageEvent) => {
-      const allowedOrigins = [".dp.assistcloud.net", "http://localhost:3000"]
-      if (!allowedOrigins.some(o => event.origin === o || event.origin.endsWith(o))) return
+      if (event.origin !== TOOLBOX_ORIGIN) return
       if (event.data?.type !== "SSO_TOKEN") return
       clearTimeout(timeout)
       localStorage.setItem("access_token", event.data.token)

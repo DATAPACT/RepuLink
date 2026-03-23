@@ -12,10 +12,9 @@ import { ThemeProvider } from "./components/theme-provider"
 import { Toaster } from "./components/ui/sonner"
 import "./index.css"
 import { routeTree } from "./routeTree.gen"
+import { TOOLBOX_ORIGIN } from "./constants"
 
-const ALLOWED_ORIGINS = [".dp.assistcloud.net", "http://localhost:3000"]
-const isAllowedOrigin = (origin: string) =>
-  ALLOWED_ORIGINS.some((o) => origin === o || origin.endsWith(o))
+const isAllowedOrigin = (origin: string) => origin === TOOLBOX_ORIGIN
 
 let pendingTokenRefresh: Promise<string> | null = null
 

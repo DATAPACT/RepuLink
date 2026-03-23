@@ -1,0 +1,1 @@
+export const TOOLBOX_ORIGIN = import.meta.env.VITE_TOOLBOX_ORIGIN as string

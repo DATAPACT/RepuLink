@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router"
 
+import { TOOLBOX_ORIGIN } from "@/constants"
 import { Footer } from "@/components/Common/Footer"
 import AppSidebar from "@/components/Sidebar/AppSidebar"
 import {
@@ -9,14 +10,33 @@ import {
 } from "@/components/ui/sidebar"
 import { isLoggedIn } from "@/hooks/useAuth"
 
+const waitForSsoToken = (): Promise<string | null> =>
+  new Promise((resolve) => {
+    const timeout = setTimeout(() => resolve(null), 3000)
+    const handler = (event: MessageEvent) => {
+      if (event.origin !== TOOLBOX_ORIGIN) return
+      if (event.data?.type !== "SSO_TOKEN") return
+      clearTimeout(timeout)
+      resolve(event.data.token)
+    }
+    window.addEventListener("message", handler, { once: true })
+    window.parent.postMessage({ type: "IFRAME_READY" }, "*")
+  })
+
 export const Route = createFileRoute("/_layout")({
   component: Layout,
   beforeLoad: async () => {
-    if (!isLoggedIn()) {
-      throw redirect({
-        to: "/login",
-      })
+    if (isLoggedIn()) return
+
+    if (window.parent !== window) {
+      const token = await waitForSsoToken()
+      if (token) {
+        localStorage.setItem("access_token", token)
+        return
+      }
     }
+
+    throw redirect({ to: "/login" })
   },
 })
 
