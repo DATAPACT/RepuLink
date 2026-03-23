@@ -1,4 +1,5 @@
 import secrets
+import uuid
 from collections.abc import Generator
 from typing import Annotated
 
@@ -8,13 +9,14 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
 from pydantic import ValidationError
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
 from app import crud
 from app.core import security
 from app.core.config import settings
 from app.core.db import engine
-from app.models import TokenPayload, User, UserCreate
+from app.models import TokenPayload, User
 
 reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_STR}/login/access-token"
@@ -51,14 +53,22 @@ def _get_user_from_keycloak_token(session: Session, token: str) -> User:
 
     user = crud.get_user_by_email(session=session, email=email)
     if not user:
-        user = crud.create_user(
-            session=session,
-            user_create=UserCreate(
+        keycloak_sub = userinfo.get("sub")
+        try:
+            user = User(
+                id=uuid.UUID(keycloak_sub) if keycloak_sub else uuid.uuid4(),
                 email=email,
                 full_name=userinfo.get("name"),
-                password=secrets.token_urlsafe(32),
-            ),
-        )
+                is_active=True,
+                is_superuser=False,
+                hashed_password=security.get_password_hash(secrets.token_urlsafe(32)),
+            )
+            session.add(user)
+            session.commit()
+            session.refresh(user)
+        except IntegrityError:
+            session.rollback()
+            user = crud.get_user_by_email(session=session, email=email)
 
     if not user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
