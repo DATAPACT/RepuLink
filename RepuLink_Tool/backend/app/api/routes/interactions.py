@@ -27,9 +27,12 @@ def create_interaction(
     target = session.get(User, body.target_id)
     if not target:
         raise HTTPException(status_code=404, detail="Target user not found")
-    interaction = crud.create_interaction(
-        session=session, initiator_id=current_user.id, target_id=body.target_id, message=body.message
-    )
+    try:
+        interaction = crud.create_interaction(
+            session=session, initiator_id=current_user.id, target_id=body.target_id, message=body.message
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return interaction
 
 
