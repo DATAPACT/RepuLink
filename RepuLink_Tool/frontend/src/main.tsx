@@ -27,11 +27,12 @@ const requestFreshToken = (): Promise<string> => {
       resolve((event as CustomEvent<{ token: string }>).detail.token)
     }
     window.addEventListener("sso-token-refreshed", handler, { once: true })
-    window.parent.postMessage({ type: "IFRAME_REQUEST_TOKEN" }, "*")
+    window.parent.postMessage({ type: "IFRAME_REQUEST_TOKEN" }, TOOLBOX_ORIGIN)
     setTimeout(() => {
       window.removeEventListener("sso-token-refreshed", handler)
       pendingTokenRefresh = null
-      resolve(localStorage.getItem("access_token") || "")
+      localStorage.removeItem("access_token")
+      window.location.href = "/login"
     }, 5000)
   })
 
@@ -62,7 +63,7 @@ OpenAPI.TOKEN = async () => {
 const handleApiError = (error: Error) => {
   if (error instanceof ApiError && [401, 403].includes(error.status)) {
     if (window.parent !== window) {
-      window.parent.postMessage({ type: "IFRAME_REQUEST_TOKEN" }, "*")
+      window.parent.postMessage({ type: "IFRAME_REQUEST_TOKEN" }, TOOLBOX_ORIGIN)
     } else {
       localStorage.removeItem("access_token")
       window.location.href = "/login"
