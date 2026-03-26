@@ -1,13 +1,17 @@
+import { useEffect, useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import {
   createFileRoute,
   Link as RouterLink,
   redirect,
+  useNavigate,
 } from "@tanstack/react-router"
+import { Loader2 } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
 import type { Body_login_login_access_token as AccessToken } from "@/client"
+import { TOOLBOX_ORIGIN } from "@/constants"
 import { AuthLayout } from "@/components/Common/AuthLayout"
 import {
   Form,
@@ -52,6 +56,9 @@ export const Route = createFileRoute("/login")({
 
 function Login() {
   const { loginMutation } = useAuth()
+  const navigate = useNavigate()
+  const isInIframe = window.parent !== window
+  const [awaitingSso, setAwaitingSso] = useState(isInIframe)
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     mode: "onBlur",
@@ -61,6 +68,38 @@ function Login() {
       password: "",
     },
   })
+
+  useEffect(() => {
+    if (!isInIframe) return
+
+    const timeout = setTimeout(() => setAwaitingSso(false), 3000)
+
+    const handler = (event: MessageEvent) => {
+      if (event.origin !== TOOLBOX_ORIGIN) return
+      if (event.data?.type !== "SSO_TOKEN") return
+      clearTimeout(timeout)
+      localStorage.setItem("access_token", event.data.token)
+      navigate({ to: "/" })
+    }
+
+    window.addEventListener("message", handler)
+
+    // Signal to parent that RepuLink is ready to receive the SSO token
+    window.parent.postMessage({ type: "IFRAME_READY" }, "*")
+
+    return () => {
+      clearTimeout(timeout)
+      window.removeEventListener("message", handler)
+    }
+  }, [navigate, isInIframe])
+
+  if (awaitingSso) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
 
   const onSubmit = (data: FormData) => {
     if (loginMutation.isPending) return

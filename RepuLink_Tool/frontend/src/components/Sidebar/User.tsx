@@ -41,7 +41,7 @@ function UserInfo({ fullName, email }: UserInfoProps) {
 }
 
 export function User({ user }: { user: any }) {
-  const { logout } = useAuth()
+  const { logout, isSsoUser } = useAuth()
   const { isMobile, setOpenMobile } = useSidebar()
 
   if (!user) return null
@@ -85,10 +85,12 @@ export function User({ user }: { user: any }) {
                 User Settings
               </DropdownMenuItem>
             </RouterLink>
-            <DropdownMenuItem onClick={handleLogout}>
-              <LogOut />
-              Log Out
-            </DropdownMenuItem>
+            {!isSsoUser && (
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut />
+                Log Out
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>

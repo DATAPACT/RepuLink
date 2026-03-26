@@ -1,3 +1,4 @@
+import { useEffect } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 
@@ -15,16 +16,48 @@ const isLoggedIn = () => {
   return localStorage.getItem("access_token") !== null
 }
 
+const getUserFromKeycloakToken = (): UserPublic | null => {
+  const token = localStorage.getItem("access_token")
+  if (!token) return null
+  try {
+    const base64url = token.split(".")[1]
+    const base64 = base64url.replace(/-/g, "+").replace(/_/g, "/")
+    const padded = base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, "=")
+    const payload = JSON.parse(atob(padded))
+    if (!payload.iss) return null  // internal JWT has no iss
+    return {
+      id: payload.sub,
+      email: payload.email,
+      full_name: payload.name ?? null,
+      is_active: true,
+      is_superuser: false,
+    }
+  } catch {
+    return null
+  }
+}
+
 const useAuth = () => {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { showErrorToast } = useCustomToast()
 
-  const { data: user } = useQuery<UserPublic | null, Error>({
+  useEffect(() => {
+    const handler = () => navigate({ to: "/" })
+    window.addEventListener("sso-token-refreshed", handler)
+    return () => window.removeEventListener("sso-token-refreshed", handler)
+  }, [navigate])
+
+  const ssoUser = getUserFromKeycloakToken()
+
+  const { data: fetchedUser } = useQuery<UserPublic | null, Error>({
     queryKey: ["currentUser"],
     queryFn: UsersService.readUserMe,
     enabled: isLoggedIn(),
+    placeholderData: ssoUser ?? undefined,
   })
+
+  const user = fetchedUser ?? ssoUser
 
   const signUpMutation = useMutation({
     mutationFn: (data: UserRegister) =>
@@ -63,6 +96,7 @@ const useAuth = () => {
     loginMutation,
     logout,
     user,
+    isSsoUser: ssoUser !== null,
   }
 }
 

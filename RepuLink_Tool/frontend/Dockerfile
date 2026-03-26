@@ -10,6 +10,7 @@ RUN npm install
 COPY ./ /app/
 
 ARG VITE_API_URL=${VITE_API_URL}
+ARG VITE_TOOLBOX_ORIGIN=${VITE_TOOLBOX_ORIGIN}
 
 RUN npm run build
 
